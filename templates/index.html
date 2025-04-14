@@ -1,0 +1,710 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Comparison Tool</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --primary-hover: #1d4ed8;
+            --secondary-color: #f3f4f6;
+            --border-color: #e5e7eb;
+            --text-color: #374151;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+            color: var(--text-color);
+            line-height: 1.5;
+            margin: 0;
+            padding: 0;
+            background-color: #f9fafb;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        h1 {
+            color: var(--primary-color);
+            margin-bottom: 1.5rem;
+        }
+        
+        h2 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+        }
+        
+        .card {
+            background-color: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .file-upload {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .file-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        label {
+            font-weight: 600;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+        
+        .file-input {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        
+        input[type="file"] {
+            flex: 1;
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.25rem;
+        }
+        
+        .target-files {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 0.25rem;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+        
+        button:disabled {
+            background-color: var(--border-color);
+            cursor: not-allowed;
+        }
+        
+        .add-file-btn {
+            background-color: var(--secondary-color);
+            color: var(--text-color);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            border: 1px solid var(--border-color);
+        }
+        
+        .add-file-btn:hover {
+            background-color: #e5e7eb;
+        }
+        
+        .btn-group {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        
+        .output-area {
+            display: none;
+        }
+        
+        .results-container {
+            margin-top: 2rem;
+        }
+        
+        .results-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 1rem;
+        }
+        
+        .tab {
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+        }
+        
+        .tab.active {
+            border-bottom: 2px solid var(--primary-color);
+            font-weight: 600;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .file-result {
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1rem;
+        }
+        
+        .file-result h3 {
+            margin-top: 0;
+            margin-bottom: 1rem;
+            font-size: 1.25rem;
+        }
+        
+        .result-summary {
+            display: flex;
+            gap: 2rem;
+            margin-bottom: 1rem;
+        }
+        
+        .summary-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .count-badge {
+            background-color: var(--secondary-color);
+            border-radius: 9999px;
+            padding: 0.25rem 0.75rem;
+            font-weight: 600;
+        }
+        
+        .count-badge.missing {
+            background-color: rgba(239, 68, 68, 0.1);
+            color: var(--danger-color);
+        }
+        
+        .count-badge.common {
+            background-color: rgba(16, 185, 129, 0.1);
+            color: var(--success-color);
+        }
+        
+        .count-badge.diff {
+            background-color: rgba(245, 158, 11, 0.1);
+            color: var(--warning-color);
+        }
+        
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+        
+        .comparison-table th,
+        .comparison-table td {
+            text-align: left;
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .comparison-table th {
+            background-color: var(--secondary-color);
+            font-weight: 600;
+        }
+        
+        .value-diff {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+        
+        .value-ref,
+        .value-target {
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+        }
+        
+        .value-ref {
+            background-color: rgba(16, 185, 129, 0.1);
+        }
+        
+        .value-target {
+            background-color: rgba(239, 68, 68, 0.1);
+        }
+        
+        .expandable-row {
+            cursor: pointer;
+        }
+        
+        .expandable-row:hover {
+            background-color: rgba(37, 99, 235, 0.05);
+        }
+        
+        .nested-content {
+            padding-left: 2rem;
+            display: none;
+        }
+        
+        pre {
+            background-color: #f1f5f9;
+            border-radius: 0.25rem;
+            padding: 1rem;
+            overflow-x: auto;
+            font-size: 0.875rem;
+            margin: 0.5rem 0;
+        }
+        
+        .export-btn {
+            margin-top: 1rem;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: var(--primary-color);
+            animation: spin 1s linear infinite;
+            margin: 2rem auto;
+            display: none;
+        }
+        
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+        
+        .error-message {
+            color: var(--danger-color);
+            background-color: rgba(239, 68, 68, 0.1);
+            padding: 1rem;
+            border-radius: 0.25rem;
+            margin-bottom: 1rem;
+            display: none;
+        }
+        
+        .no-files-message {
+            text-align: center;
+            color: #6b7280;
+            padding: 2rem;
+        }
+        
+        .remove-file-btn {
+            background-color: transparent;
+            color: var(--danger-color);
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+        }
+        
+        .remove-file-btn:hover {
+            background-color: rgba(239, 68, 68, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>JSON Comparison Tool</h1>
+        
+        <div class="card">
+            <h2>Upload Files</h2>
+            <form id="upload-form" enctype="multipart/form-data">
+                <div class="file-upload">
+                    <div class="file-input-group">
+                        <label for="reference-file">Reference JSON File:</label>
+                        <div class="file-input">
+                            <input type="file" id="reference-file" name="reference" accept=".json">
+                        </div>
+                    </div>
+                    
+                    <div class="file-input-group">
+                        <label>Target JSON Files:</label>
+                        <div class="target-files" id="target-files-container">
+                            <div class="file-input">
+                                <input type="file" class="target-file" name="targets" accept=".json">
+                                <button type="button" class="remove-file-btn" style="visibility: hidden;">Remove</button>
+                            </div>
+                        </div>
+                        <button type="button" class="add-file-btn" id="add-file-btn">
+                            <span>+</span> Add Another File
+                        </button>
+                    </div>
+                    
+                    <div class="btn-group">
+                        <button type="submit" id="compare-btn">Compare Files</button>
+                    </div>
+                </div>
+            </form>
+            
+            <div class="error-message" id="error-message"></div>
+            <div class="spinner" id="spinner"></div>
+        </div>
+        
+        <div class="output-area" id="output-area">
+            <h2>Comparison Results</h2>
+            
+            <div class="results-tabs">
+                <div class="tab active" data-tab="summary">Summary</div>
+                <div class="tab" data-tab="missing">Missing Keys</div>
+                <div class="tab" data-tab="differences">Differences</div>
+                <div class="tab" data-tab="common">Common Keys</div>
+                <div class="tab" data-tab="json">Raw JSON</div>
+            </div>
+            
+            <div class="tab-content active" id="tab-summary">
+                <div id="results-summary"></div>
+            </div>
+            
+            <div class="tab-content" id="tab-missing">
+                <div id="results-missing"></div>
+            </div>
+            
+            <div class="tab-content" id="tab-differences">
+                <div id="results-differences"></div>
+            </div>
+            
+            <div class="tab-content" id="tab-common">
+                <div id="results-common"></div>
+            </div>
+            
+            <div class="tab-content" id="tab-json">
+                <button type="button" class="export-btn" id="export-btn">Export Results</button>
+                <pre id="results-json"></pre>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // DOM Elements
+        const uploadForm = document.getElementById('upload-form');
+        const targetFilesContainer = document.getElementById('target-files-container');
+        const addFileBtn = document.getElementById('add-file-btn');
+        const errorMessage = document.getElementById('error-message');
+        const spinner = document.getElementById('spinner');
+        const outputArea = document.getElementById('output-area');
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+        const exportBtn = document.getElementById('export-btn');
+        
+        // Tab switching
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tabContents.forEach(tc => tc.classList.remove('active'));
+                
+                tab.classList.add('active');
+                document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
+            });
+        });
+        
+        // Add new file input
+        addFileBtn.addEventListener('click', () => {
+            const fileInputContainer = document.createElement('div');
+            fileInputContainer.className = 'file-input';
+            
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.className = 'target-file';
+            fileInput.name = 'targets';
+            fileInput.accept = '.json';
+            
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'remove-file-btn';
+            removeBtn.textContent = 'Remove';
+            removeBtn.addEventListener('click', () => {
+                fileInputContainer.remove();
+                updateRemoveButtons();
+            });
+            
+            fileInputContainer.appendChild(fileInput);
+            fileInputContainer.appendChild(removeBtn);
+            targetFilesContainer.appendChild(fileInputContainer);
+            
+            updateRemoveButtons();
+        });
+        
+        // Helper for updating remove buttons visibility
+        function updateRemoveButtons() {
+            const removeButtons = targetFilesContainer.querySelectorAll('.remove-file-btn');
+            if (removeButtons.length === 1) {
+                removeButtons[0].style.visibility = 'hidden';
+            } else {
+                removeButtons.forEach(btn => btn.style.visibility = 'visible');
+            }
+        }
+        
+        // Handle form submission
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Reset UI
+            errorMessage.style.display = 'none';
+            spinner.style.display = 'block';
+            outputArea.style.display = 'none';
+            
+            try {
+                const formData = new FormData(uploadForm);
+                
+                // Check if files are selected
+                if (!formData.get('reference').name) {
+                    throw new Error('Please select a reference JSON file');
+                }
+                
+                const targetInputs = document.querySelectorAll('.target-file');
+                const hasTargetFiles = Array.from(targetInputs).some(input => input.files[0]);
+                
+                if (!hasTargetFiles) {
+                    throw new Error('Please select at least one target JSON file');
+                }
+                
+                // Send to backend
+                const response = await fetch('/api/compare', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const results = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(results.error || 'Failed to process comparison');
+                }
+                
+                // Display results
+                displayResults(results);
+                outputArea.style.display = 'block';
+                
+            } catch (error) {
+                errorMessage.textContent = error.message;
+                errorMessage.style.display = 'block';
+            } finally {
+                spinner.style.display = 'none';
+            }
+        });
+        
+        // Display results in the UI
+        function displayResults(results) {
+            // Summary tab
+            const summaryContainer = document.getElementById('results-summary');
+            summaryContainer.innerHTML = '';
+            
+            results.forEach(result => {
+                const fileResult = document.createElement('div');
+                fileResult.className = 'file-result';
+                
+                const fileHeader = document.createElement('h3');
+                fileHeader.textContent = result.file;
+                fileResult.appendChild(fileHeader);
+                
+                if (result.error) {
+                    const errorText = document.createElement('div');
+                    errorText.className = 'error-message';
+                    errorText.style.display = 'block';
+                    errorText.textContent = result.error;
+                    fileResult.appendChild(errorText);
+                } else {
+                    const summary = document.createElement('div');
+                    summary.className = 'result-summary';
+                    
+                    const missingCount = Object.keys(result.missing).length;
+                    const commonCount = Object.keys(result.common).length;
+                    const diffCount = Object.keys(result.differences).length;
+                    
+                    summary.innerHTML = `
+                        <div class="summary-item">
+                            <span>Missing Keys:</span>
+                            <span class="count-badge missing">${missingCount}</span>
+                        </div>
+                        <div class="summary-item">
+                            <span>Common Keys:</span>
+                            <span class="count-badge common">${commonCount}</span>
+                        </div>
+                        <div class="summary-item">
+                            <span>Differences:</span>
+                            <span class="count-badge diff">${diffCount}</span>
+                        </div>
+                    `;
+                    
+                    fileResult.appendChild(summary);
+                }
+                
+                summaryContainer.appendChild(fileResult);
+            });
+            
+            // Missing keys tab
+            const missingContainer = document.getElementById('results-missing');
+            missingContainer.innerHTML = '';
+            
+            results.forEach(result => {
+                if (result.error) return;
+                
+                const missingKeys = Object.keys(result.missing);
+                if (missingKeys.length === 0) {
+                    missingContainer.innerHTML += `
+                        <div class="file-result">
+                            <h3>${result.file}</h3>
+                            <p>No missing keys found.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                const table = document.createElement('table');
+                table.className = 'comparison-table';
+                table.innerHTML = `
+                    <thead>
+                        <tr>
+                            <th>Key Path</th>
+                            <th>Reference Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${missingKeys.map(key => `
+                            <tr>
+                                <td>${key}</td>
+                                <td><pre>${JSON.stringify(result.missing[key], null, 2)}</pre></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                `;
+                
+                const fileResult = document.createElement('div');
+                fileResult.className = 'file-result';
+                fileResult.innerHTML = `<h3>${result.file}</h3>`;
+                fileResult.appendChild(table);
+                
+                missingContainer.appendChild(fileResult);
+            });
+            
+            // Differences tab
+            const differencesContainer = document.getElementById('results-differences');
+            differencesContainer.innerHTML = '';
+            
+            results.forEach(result => {
+                if (result.error) return;
+                
+                const diffKeys = Object.keys(result.differences);
+                if (diffKeys.length === 0) {
+                    differencesContainer.innerHTML += `
+                        <div class="file-result">
+                            <h3>${result.file}</h3>
+                            <p>No differences found.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                const table = document.createElement('table');
+                table.className = 'comparison-table';
+                table.innerHTML = `
+                    <thead>
+                        <tr>
+                            <th>Key Path</th>
+                            <th>Reference Value</th>
+                            <th>Target Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${diffKeys.map(key => {
+                            const diff = result.differences[key];
+                            return `
+                                <tr>
+                                    <td>${key}</td>
+                                    <td><pre>${JSON.stringify(diff.reference, null, 2)}</pre></td>
+                                    <td><pre>${JSON.stringify(diff.target, null, 2)}</pre></td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                `;
+                
+                const fileResult = document.createElement('div');
+                fileResult.className = 'file-result';
+                fileResult.innerHTML = `<h3>${result.file}</h3>`;
+                fileResult.appendChild(table);
+                
+                differencesContainer.appendChild(fileResult);
+            });
+            
+            // Common keys tab
+            const commonContainer = document.getElementById('results-common');
+            commonContainer.innerHTML = '';
+            
+            results.forEach(result => {
+                if (result.error) return;
+                
+                const commonKeys = Object.keys(result.common);
+                if (commonKeys.length === 0) {
+                    commonContainer.innerHTML += `
+                        <div class="file-result">
+                            <h3>${result.file}</h3>
+                            <p>No common keys found.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                const table = document.createElement('table');
+                table.className = 'comparison-table';
+                table.innerHTML = `
+                    <thead>
+                        <tr>
+                            <th>Key Path</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${commonKeys.map(key => `
+                            <tr>
+                                <td>${key}</td>
+                                <td><pre>${JSON.stringify(result.common[key], null, 2)}</pre></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                `;
+                
+                const fileResult = document.createElement('div');
+                fileResult.className = 'file-result';
+                fileResult.innerHTML = `<h3>${result.file}</h3>`;
+                fileResult.appendChild(table);
+                
+                commonContainer.appendChild(fileResult);
+            });
+            
+            // Raw JSON tab
+            document.getElementById('results-json').textContent = JSON.stringify(results, null, 2);
+        }
+        
+        // Export results
+        exportBtn.addEventListener('click', () => {
+            const json = document.getElementById('results-json').textContent;
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'comparison_results.json';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        });
+    </script>
+</body>
+</html>
