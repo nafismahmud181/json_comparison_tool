@@ -392,6 +392,45 @@
             background-color: var(--primary-color);
             transition: width 0.3s ease;
         }
+        
+        .settings-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            padding: 1rem;
+        }
+        
+        .settings-header h2 {
+            margin: 0;
+        }
+        
+        .collapse-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.5rem;
+            color: var(--text-color);
+            transition: transform 0.3s ease;
+        }
+        
+        .collapse-btn.collapsed .collapse-icon {
+            transform: rotate(-90deg);
+        }
+        
+        .settings-content {
+            padding: 1rem;
+            border-top: 1px solid var(--border-color);
+            transition: max-height 0.3s ease, opacity 0.3s ease;
+            overflow: hidden;
+        }
+        
+        .settings-content.collapsed {
+            max-height: 0;
+            opacity: 0;
+            padding: 0;
+            border-top: none;
+        }
     </style>
 </head>
 <body>
@@ -433,46 +472,53 @@
         </div>
         
         <div class="card">
-            <h2>Comparison Settings</h2>
-            <div class="settings-group">
-                <div class="setting-item">
-                    <label>
-                        <input type="checkbox" id="ignoreOrder" name="ignore_order">
-                        Ignore Array Order
-                    </label>
-                    <p class="setting-description">Compare arrays regardless of element order</p>
-                </div>
-                
-                <div class="setting-item">
-                    <label>
-                        <input type="checkbox" id="caseInsensitive" name="case_insensitive">
-                        Case Insensitive
-                    </label>
-                    <p class="setting-description">Compare strings ignoring case differences</p>
-                </div>
-                
-                <div class="setting-item">
-                    <label for="numericTolerance">Numeric Tolerance</label>
-                    <input type="number" id="numericTolerance" name="numeric_tolerance" value="0.0" step="0.0001" min="0">
-                    <p class="setting-description">Maximum allowed difference between numbers (e.g., 0.0001)</p>
-                </div>
-                
-                <div class="setting-item">
-                    <label for="ignoreKeys">Ignore Keys</label>
-                    <input type="text" id="ignoreKeys" name="ignore_keys" placeholder="key1,key2,key3">
-                    <p class="setting-description">Comma-separated list of keys to ignore in comparison</p>
-                </div>
-                
-                <div class="setting-item">
-                    <label for="customRules">Custom Rules (JSON)</label>
-                    <textarea id="customRules" name="custom_rules" rows="4" placeholder='{"path.to.key": "ignore", "another.path": "custom_function"}'>{"path.to.key": "ignore"}</textarea>
-                    <p class="setting-description">JSON object defining custom comparison rules</p>
-                </div>
-                
-                <div class="setting-item">
-                    <label for="jsonSchema">JSON Schema (Optional)</label>
-                    <textarea id="jsonSchema" name="schema" rows="4" placeholder='{"type": "object", "properties": {...}}'></textarea>
-                    <p class="setting-description">JSON Schema to validate files against</p>
+            <div class="settings-header" id="settings-header">
+                <h2>Comparison Settings</h2>
+                <button class="collapse-btn" id="collapse-btn">
+                    <span class="collapse-icon">▼</span>
+                </button>
+            </div>
+            <div class="settings-content" id="settings-content">
+                <div class="settings-group">
+                    <div class="setting-item">
+                        <label>
+                            <input type="checkbox" id="ignoreOrder" name="ignore_order">
+                            Ignore Array Order
+                        </label>
+                        <p class="setting-description">Compare arrays regardless of element order</p>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <label>
+                            <input type="checkbox" id="caseInsensitive" name="case_insensitive">
+                            Case Insensitive
+                        </label>
+                        <p class="setting-description">Compare strings ignoring case differences</p>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <label for="numericTolerance">Numeric Tolerance</label>
+                        <input type="number" id="numericTolerance" name="numeric_tolerance" value="0.0" step="0.0001" min="0">
+                        <p class="setting-description">Maximum allowed difference between numbers (e.g., 0.0001)</p>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <label for="ignoreKeys">Ignore Keys</label>
+                        <input type="text" id="ignoreKeys" name="ignore_keys" placeholder="key1,key2,key3">
+                        <p class="setting-description">Comma-separated list of keys to ignore in comparison</p>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <label for="customRules">Custom Rules (JSON)</label>
+                        <textarea id="customRules" name="custom_rules" rows="4" placeholder='{"path.to.key": "ignore", "another.path": "custom_function"}'>{"path.to.key": "ignore"}</textarea>
+                        <p class="setting-description">JSON object defining custom comparison rules</p>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <label for="jsonSchema">JSON Schema (Optional)</label>
+                        <textarea id="jsonSchema" name="schema" rows="4" placeholder='{"type": "object", "properties": {...}}'></textarea>
+                        <p class="setting-description">JSON Schema to validate files against</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -949,6 +995,26 @@
             } catch (error) {
                 e.target.style.borderColor = 'red';
             }
+        });
+        
+        // Add collapsible functionality for settings
+        document.addEventListener('DOMContentLoaded', function() {
+            const settingsHeader = document.getElementById('settings-header');
+            const settingsContent = document.getElementById('settings-content');
+            const collapseBtn = document.getElementById('collapse-btn');
+            
+            // Load saved state from localStorage
+            const isCollapsed = localStorage.getItem('settingsCollapsed') === 'true';
+            if (isCollapsed) {
+                settingsContent.classList.add('collapsed');
+                collapseBtn.classList.add('collapsed');
+            }
+            
+            settingsHeader.addEventListener('click', function() {
+                settingsContent.classList.toggle('collapsed');
+                collapseBtn.classList.toggle('collapsed');
+                localStorage.setItem('settingsCollapsed', settingsContent.classList.contains('collapsed'));
+            });
         });
     </script>
 </body>
