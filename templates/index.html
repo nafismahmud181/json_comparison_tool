@@ -15,15 +15,33 @@
             --success-color: #10b981;
             --warning-color: #f59e0b;
             --danger-color: #ef4444;
+            --bg-color: #f9fafb;
+            --card-bg: white;
+            --input-bg: white;
         }
-        
+
+        [data-theme="dark"] {
+            --primary-color: #3b82f6;
+            --primary-hover: #60a5fa;
+            --secondary-color: #1f2937;
+            --border-color: #374151;
+            --text-color: #f3f4f6;
+            --success-color: #34d399;
+            --warning-color: #fbbf24;
+            --danger-color: #f87171;
+            --bg-color: #111827;
+            --card-bg: #1f2937;
+            --input-bg: #374151;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
             color: var(--text-color);
             line-height: 1.5;
             margin: 0;
             padding: 0;
-            background-color: #f9fafb;
+            background-color: var(--bg-color);
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
         
         .container {
@@ -44,7 +62,7 @@
         }
         
         .card {
-            background-color: white;
+            background-color: var(--card-bg);
             border-radius: 0.5rem;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
             padding: 1.5rem;
@@ -431,10 +449,113 @@
             padding: 0;
             border-top: none;
         }
+
+        .header-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .theme-toggle {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 0.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .theme-toggle:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .search-container {
+            position: relative;
+            margin-bottom: 1rem;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.75rem 2.5rem 0.75rem 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.25rem;
+            background-color: var(--input-bg);
+            color: var(--text-color);
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-color);
+        }
+
+        .bookmark-btn {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 0.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .bookmark-btn:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .bookmark-btn.active {
+            color: var(--warning-color);
+        }
+
+        .keyboard-shortcuts {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            background-color: var(--card-bg);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+
+        .keyboard-shortcuts.show {
+            display: block;
+        }
+
+        .shortcut-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+
+        .shortcut-key {
+            background-color: var(--secondary-color);
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-family: monospace;
+        }
     </style>
 </head>
 <body>
     <div class="container">
+        <div class="header-actions">
+            <button class="theme-toggle" id="theme-toggle">
+                <span class="theme-icon">🌙</span>
+                <span class="theme-text">Dark Mode</span>
+            </button>
+            <button class="bookmark-btn" id="bookmark-btn">
+                <span class="bookmark-icon">🔖</span>
+                <span class="bookmark-text">Bookmark</span>
+            </button>
+        </div>
         <h1>JSON Comparison Tool</h1>
         
         <div class="card">
@@ -563,6 +684,26 @@
             <div class="tab-content" id="tab-json">
                 <button type="button" class="export-btn" id="export-btn">Export Results</button>
                 <pre id="results-json"></pre>
+            </div>
+        </div>
+
+        <div class="keyboard-shortcuts" id="keyboard-shortcuts">
+            <h3>Keyboard Shortcuts</h3>
+            <div class="shortcut-item">
+                <span>Toggle Dark Mode</span>
+                <span class="shortcut-key">Ctrl + D</span>
+            </div>
+            <div class="shortcut-item">
+                <span>Toggle Settings</span>
+                <span class="shortcut-key">Ctrl + S</span>
+            </div>
+            <div class="shortcut-item">
+                <span>Show Shortcuts</span>
+                <span class="shortcut-key">Ctrl + K</span>
+            </div>
+            <div class="shortcut-item">
+                <span>Toggle Bookmark</span>
+                <span class="shortcut-key">Ctrl + B</span>
             </div>
         </div>
     </div>
@@ -1016,6 +1157,122 @@
                 localStorage.setItem('settingsCollapsed', settingsContent.classList.contains('collapsed'));
             });
         });
+
+        // Theme handling
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeIcon = themeToggle.querySelector('.theme-icon');
+        const themeText = themeToggle.querySelector('.theme-text');
+
+        // Load saved theme
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        updateThemeButton(savedTheme);
+
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateThemeButton(newTheme);
+        });
+
+        function updateThemeButton(theme) {
+            themeIcon.textContent = theme === 'light' ? '🌙' : '☀️';
+            themeText.textContent = theme === 'light' ? 'Dark Mode' : 'Light Mode';
+        }
+
+        // Bookmark handling
+        const bookmarkBtn = document.getElementById('bookmark-btn');
+        let isBookmarked = false;
+
+        bookmarkBtn.addEventListener('click', () => {
+            isBookmarked = !isBookmarked;
+            bookmarkBtn.classList.toggle('active', isBookmarked);
+            saveBookmark();
+        });
+
+        function saveBookmark() {
+            const currentState = {
+                settings: {
+                    ignoreOrder: document.getElementById('ignoreOrder').checked,
+                    caseInsensitive: document.getElementById('caseInsensitive').checked,
+                    numericTolerance: document.getElementById('numericTolerance').value,
+                    ignoreKeys: document.getElementById('ignoreKeys').value,
+                    customRules: document.getElementById('customRules').value,
+                    schema: document.getElementById('jsonSchema').value
+                },
+                files: {
+                    reference: document.getElementById('reference-file').files[0]?.name,
+                    targets: Array.from(document.querySelectorAll('.target-file')).map(input => input.files[0]?.name)
+                }
+            };
+
+            if (isBookmarked) {
+                localStorage.setItem('bookmarkedComparison', JSON.stringify(currentState));
+            } else {
+                localStorage.removeItem('bookmarkedComparison');
+            }
+        }
+
+        // Keyboard shortcuts
+        const shortcutsPanel = document.getElementById('keyboard-shortcuts');
+
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey) {
+                switch(e.key.toLowerCase()) {
+                    case 'd':
+                        e.preventDefault();
+                        themeToggle.click();
+                        break;
+                    case 's':
+                        e.preventDefault();
+                        document.getElementById('settings-header').click();
+                        break;
+                    case 'k':
+                        e.preventDefault();
+                        shortcutsPanel.classList.toggle('show');
+                        break;
+                    case 'b':
+                        e.preventDefault();
+                        bookmarkBtn.click();
+                        break;
+                }
+            }
+        });
+
+        // Search functionality
+        const searchContainer = document.createElement('div');
+        searchContainer.className = 'search-container';
+        searchContainer.innerHTML = `
+            <input type="text" class="search-input" placeholder="Search in results...">
+            <span class="search-icon">🔍</span>
+        `;
+        document.querySelector('.output-area').insertBefore(searchContainer, document.querySelector('.results-tabs'));
+
+        const searchInput = searchContainer.querySelector('.search-input');
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const results = document.querySelectorAll('.file-result');
+            
+            results.forEach(result => {
+                const text = result.textContent.toLowerCase();
+                result.style.display = text.includes(searchTerm) ? '' : 'none';
+            });
+        });
+
+        // Load bookmarked state if exists
+        const bookmarkedState = localStorage.getItem('bookmarkedComparison');
+        if (bookmarkedState) {
+            const state = JSON.parse(bookmarkedState);
+            document.getElementById('ignoreOrder').checked = state.settings.ignoreOrder;
+            document.getElementById('caseInsensitive').checked = state.settings.caseInsensitive;
+            document.getElementById('numericTolerance').value = state.settings.numericTolerance;
+            document.getElementById('ignoreKeys').value = state.settings.ignoreKeys;
+            document.getElementById('customRules').value = state.settings.customRules;
+            document.getElementById('jsonSchema').value = state.settings.schema;
+            bookmarkBtn.classList.add('active');
+            isBookmarked = true;
+        }
     </script>
 </body>
 </html>
