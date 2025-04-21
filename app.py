@@ -15,6 +15,9 @@ UPLOAD_FOLDER = os.path.join(tempfile.gettempdir(), 'json_comparison_uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
+# Get port from environment variable or use default
+port = int(os.environ.get('PORT', 5000))
+
 class ComparisonConfig:
     def __init__(self, 
                  ignore_order: bool = False,
@@ -270,4 +273,4 @@ def compare():
     return jsonify(results)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=port)
