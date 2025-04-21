@@ -10,6 +10,9 @@ from typing import Dict, Any, List, Union, Optional
 app = Flask(__name__, static_folder='static', template_folder='templates')
 CORS(app)  # Enable CORS for all routes
 
+# Configure maximum file upload size (500MB)
+app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB in bytes
+
 # Create upload folder if it doesn't exist
 UPLOAD_FOLDER = os.path.join(tempfile.gettempdir(), 'json_comparison_uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -182,95 +185,131 @@ def index():
 
 @app.route('/api/compare', methods=['POST'])
 def compare():
-    if 'reference' not in request.files:
-        return jsonify({"error": "No reference file provided"}), 400
-    
-    # Get comparison configuration from request
-    config = ComparisonConfig(
-        ignore_order=request.form.get('ignore_order', 'false').lower() == 'true',
-        case_insensitive=request.form.get('case_insensitive', 'false').lower() == 'true',
-        numeric_tolerance=float(request.form.get('numeric_tolerance', '0.0')),
-        ignore_keys=request.form.get('ignore_keys', '').split(',') if request.form.get('ignore_keys') else [],
-        custom_rules=json.loads(request.form.get('custom_rules', '{}')),
-        schema=json.loads(request.form.get('schema', '{}')) if request.form.get('schema') else None,
-        compare_keys_only=request.form.get('compare_keys_only', 'false').lower() == 'true'
-    )
-    
-    reference_file = request.files['reference']
-    if reference_file.filename == '':
-        return jsonify({"error": "No reference file selected"}), 400
+    try:
+        if 'reference' not in request.files:
+            return jsonify({"error": "No reference file provided"}), 400
+        
+        # Get comparison configuration from request
+        config = ComparisonConfig(
+            ignore_order=request.form.get('ignore_order', 'false').lower() == 'true',
+            case_insensitive=request.form.get('case_insensitive', 'false').lower() == 'true',
+            numeric_tolerance=float(request.form.get('numeric_tolerance', '0.0')),
+            ignore_keys=request.form.get('ignore_keys', '').split(',') if request.form.get('ignore_keys') else [],
+            custom_rules=json.loads(request.form.get('custom_rules', '{}')),
+            schema=json.loads(request.form.get('schema', '{}')) if request.form.get('schema') else None,
+            compare_keys_only=request.form.get('compare_keys_only', 'false').lower() == 'true'
+        )
+        
+        reference_file = request.files['reference']
+        if reference_file.filename == '':
+            return jsonify({"error": "No reference file selected"}), 400
 
-    # Save reference file
-    reference_path = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(reference_file.filename))
-    reference_file.save(reference_path)
-    
-    # Load reference data
-    reference_data, error = load_json(reference_path)
-    if error:
-        return jsonify({"error": error}), 400
-    
-    results = []
-    
-    # Process each target file
-    target_files = request.files.getlist('targets')
-    
-    if not target_files or all(file.filename == '' for file in target_files):
-        return jsonify({"error": "No target files provided"}), 400
-    
-    for target_file in target_files:
-        if target_file.filename == '':
-            continue
-            
-        target_path = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(target_file.filename))
-        target_file.save(target_path)
+        # Save reference file
+        reference_path = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(reference_file.filename))
+        reference_file.save(reference_path)
         
-        # Load target data
-        target_data, error = load_json(target_path)
-        
-        if error:
-            results.append({
-                "file": target_file.filename,
-                "error": error,
-                "missing": {},
-                "common": {},
-                "differences": {},
-                "additional": {},
-                "accuracy": {
-                    "overall_accuracy": 0.0,
-                    "key_presence_accuracy": 0.0,
-                    "value_accuracy": 0.0
-                }
-            })
-            continue
-        
-        # Compare data
-        missing, common, differences, additional = compare_json(reference_data, target_data, config)
-        
-        # Calculate accuracy metrics
-        accuracy = calculate_accuracy(missing, common, differences, additional)
-        
-        results.append({
-            "file": target_file.filename,
-            "missing": missing,
-            "common": common,
-            "differences": differences,
-            "additional": additional,
-            "accuracy": accuracy
-        })
-        
-        # Clean up temp files
+        # Load reference data with improved error handling
         try:
-            os.remove(target_path)
+            reference_data, error = load_json(reference_path)
+            if error:
+                return jsonify({"error": f"Error loading reference file: {error}"}), 400
+        except Exception as e:
+            return jsonify({"error": f"Failed to process reference file: {str(e)}"}), 400
+        
+        results = []
+        
+        # Process each target file
+        target_files = request.files.getlist('targets')
+        
+        if not target_files or all(file.filename == '' for file in target_files):
+            return jsonify({"error": "No target files provided"}), 400
+        
+        for target_file in target_files:
+            if target_file.filename == '':
+                continue
+                
+            target_path = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(target_file.filename))
+            target_file.save(target_path)
+            
+            # Load target data with improved error handling
+            try:
+                target_data, error = load_json(target_path)
+                if error:
+                    results.append({
+                        "file": target_file.filename,
+                        "error": f"Error loading target file: {error}",
+                        "missing": {},
+                        "common": {},
+                        "differences": {},
+                        "additional": {},
+                        "accuracy": {
+                            "overall_accuracy": 0.0,
+                            "key_presence_accuracy": 0.0,
+                            "value_accuracy": 0.0
+                        }
+                    })
+                    continue
+            except Exception as e:
+                results.append({
+                    "file": target_file.filename,
+                    "error": f"Failed to process target file: {str(e)}",
+                    "missing": {},
+                    "common": {},
+                    "differences": {},
+                    "additional": {},
+                    "accuracy": {
+                        "overall_accuracy": 0.0,
+                        "key_presence_accuracy": 0.0,
+                        "value_accuracy": 0.0
+                    }
+                })
+                continue
+            
+            # Compare data
+            try:
+                missing, common, differences, additional = compare_json(reference_data, target_data, config)
+                
+                # Calculate accuracy metrics
+                accuracy = calculate_accuracy(missing, common, differences, additional)
+                
+                results.append({
+                    "file": target_file.filename,
+                    "missing": missing,
+                    "common": common,
+                    "differences": differences,
+                    "additional": additional,
+                    "accuracy": accuracy
+                })
+            except Exception as e:
+                results.append({
+                    "file": target_file.filename,
+                    "error": f"Error during comparison: {str(e)}",
+                    "missing": {},
+                    "common": {},
+                    "differences": {},
+                    "additional": {},
+                    "accuracy": {
+                        "overall_accuracy": 0.0,
+                        "key_presence_accuracy": 0.0,
+                        "value_accuracy": 0.0
+                    }
+                })
+            
+            # Clean up temp files
+            try:
+                os.remove(target_path)
+            except:
+                pass
+        
+        # Clean up reference file
+        try:
+            os.remove(reference_path)
         except:
             pass
-    
-    # Clean up reference file
-    try:
-        os.remove(reference_path)
-    except:
-        pass
-    
-    return jsonify(results)
+        
+        return jsonify(results)
+    except Exception as e:
+        return jsonify({"error": f"Failed to process comparison: {str(e)}"}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=port)
