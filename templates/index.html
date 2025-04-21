@@ -283,6 +283,7 @@
             overflow-x: auto;
             font-size: 0.875rem;
             margin: 0.5rem 0;
+            color: #111827;
         }
         
         .export-btn {
@@ -603,6 +604,14 @@
                 <div class="settings-group">
                     <div class="setting-item">
                         <label>
+                            <input type="checkbox" id="compareKeysOnly" name="compare_keys_only">
+                            Compare Keys Only
+                        </label>
+                        <p class="setting-description">Only check for the presence of keys, ignoring their values</p>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <label>
                             <input type="checkbox" id="ignoreOrder" name="ignore_order">
                             Ignore Array Order
                         </label>
@@ -779,6 +788,15 @@
             
             try {
                 const formData = new FormData(uploadForm);
+                
+                // Add comparison settings
+                formData.append('compare_keys_only', document.getElementById('compareKeysOnly').checked);
+                formData.append('ignore_order', document.getElementById('ignoreOrder').checked);
+                formData.append('case_insensitive', document.getElementById('caseInsensitive').checked);
+                formData.append('numeric_tolerance', document.getElementById('numericTolerance').value);
+                formData.append('ignore_keys', document.getElementById('ignoreKeys').value);
+                formData.append('custom_rules', document.getElementById('customRules').value);
+                formData.append('schema', document.getElementById('jsonSchema').value);
                 
                 // Check if files are selected
                 if (!formData.get('reference').name) {
@@ -1194,6 +1212,7 @@
         function saveBookmark() {
             const currentState = {
                 settings: {
+                    compareKeysOnly: document.getElementById('compareKeysOnly').checked,
                     ignoreOrder: document.getElementById('ignoreOrder').checked,
                     caseInsensitive: document.getElementById('caseInsensitive').checked,
                     numericTolerance: document.getElementById('numericTolerance').value,
@@ -1264,6 +1283,7 @@
         const bookmarkedState = localStorage.getItem('bookmarkedComparison');
         if (bookmarkedState) {
             const state = JSON.parse(bookmarkedState);
+            document.getElementById('compareKeysOnly').checked = state.settings.compareKeysOnly;
             document.getElementById('ignoreOrder').checked = state.settings.ignoreOrder;
             document.getElementById('caseInsensitive').checked = state.settings.caseInsensitive;
             document.getElementById('numericTolerance').value = state.settings.numericTolerance;

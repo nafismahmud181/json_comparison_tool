@@ -22,13 +22,15 @@ class ComparisonConfig:
                  numeric_tolerance: float = 0.0,
                  ignore_keys: List[str] = None,
                  custom_rules: Dict[str, Any] = None,
-                 schema: Dict[str, Any] = None):
+                 schema: Dict[str, Any] = None,
+                 compare_keys_only: bool = False):
         self.ignore_order = ignore_order
         self.case_insensitive = case_insensitive
         self.numeric_tolerance = numeric_tolerance
         self.ignore_keys = ignore_keys or []
         self.custom_rules = custom_rules or {}
         self.schema = schema
+        self.compare_keys_only = compare_keys_only
 
 def load_json(file_path):
     """Load JSON data from a file with error handling and encoding support."""
@@ -130,6 +132,9 @@ def compare_json(reference: Dict[str, Any], target: Dict[str, Any],
                 common.update(sub_common)
                 differences.update(sub_diff)
                 additional.update(sub_add)
+            elif config.compare_keys_only:
+                # When comparing keys only, add to common if the key exists
+                common[current_path] = ref_val
             elif isinstance(ref_val, list) and isinstance(tgt_val, list):
                 if compare_arrays(ref_val, tgt_val, config):
                     common[current_path] = ref_val
@@ -184,7 +189,8 @@ def compare():
         numeric_tolerance=float(request.form.get('numeric_tolerance', '0.0')),
         ignore_keys=request.form.get('ignore_keys', '').split(',') if request.form.get('ignore_keys') else [],
         custom_rules=json.loads(request.form.get('custom_rules', '{}')),
-        schema=json.loads(request.form.get('schema', '{}')) if request.form.get('schema') else None
+        schema=json.loads(request.form.get('schema', '{}')) if request.form.get('schema') else None,
+        compare_keys_only=request.form.get('compare_keys_only', 'false').lower() == 'true'
     )
     
     reference_file = request.files['reference']
