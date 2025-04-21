@@ -316,6 +316,82 @@
         .remove-file-btn:hover {
             background-color: rgba(239, 68, 68, 0.1);
         }
+        
+        .settings-group {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .setting-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .setting-description {
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin-top: 0.25rem;
+        }
+        
+        textarea {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.25rem;
+            font-family: monospace;
+        }
+        
+        .count-badge.additional {
+            background-color: rgba(59, 130, 246, 0.1);
+            color: var(--primary-color);
+        }
+        
+        .accuracy-metrics {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        
+        .accuracy-metric {
+            background-color: white;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .accuracy-metric h3 {
+            margin-top: 0;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+        
+        .accuracy-value {
+            font-size: 2rem;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+        
+        .accuracy-description {
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+        
+        .accuracy-bar {
+            height: 8px;
+            background-color: #e5e7eb;
+            border-radius: 4px;
+            margin-top: 1rem;
+            overflow: hidden;
+        }
+        
+        .accuracy-bar-fill {
+            height: 100%;
+            background-color: var(--primary-color);
+            transition: width 0.3s ease;
+        }
     </style>
 </head>
 <body>
@@ -356,6 +432,51 @@
             <div class="spinner" id="spinner"></div>
         </div>
         
+        <div class="card">
+            <h2>Comparison Settings</h2>
+            <div class="settings-group">
+                <div class="setting-item">
+                    <label>
+                        <input type="checkbox" id="ignoreOrder" name="ignore_order">
+                        Ignore Array Order
+                    </label>
+                    <p class="setting-description">Compare arrays regardless of element order</p>
+                </div>
+                
+                <div class="setting-item">
+                    <label>
+                        <input type="checkbox" id="caseInsensitive" name="case_insensitive">
+                        Case Insensitive
+                    </label>
+                    <p class="setting-description">Compare strings ignoring case differences</p>
+                </div>
+                
+                <div class="setting-item">
+                    <label for="numericTolerance">Numeric Tolerance</label>
+                    <input type="number" id="numericTolerance" name="numeric_tolerance" value="0.0" step="0.0001" min="0">
+                    <p class="setting-description">Maximum allowed difference between numbers (e.g., 0.0001)</p>
+                </div>
+                
+                <div class="setting-item">
+                    <label for="ignoreKeys">Ignore Keys</label>
+                    <input type="text" id="ignoreKeys" name="ignore_keys" placeholder="key1,key2,key3">
+                    <p class="setting-description">Comma-separated list of keys to ignore in comparison</p>
+                </div>
+                
+                <div class="setting-item">
+                    <label for="customRules">Custom Rules (JSON)</label>
+                    <textarea id="customRules" name="custom_rules" rows="4" placeholder='{"path.to.key": "ignore", "another.path": "custom_function"}'>{"path.to.key": "ignore"}</textarea>
+                    <p class="setting-description">JSON object defining custom comparison rules</p>
+                </div>
+                
+                <div class="setting-item">
+                    <label for="jsonSchema">JSON Schema (Optional)</label>
+                    <textarea id="jsonSchema" name="schema" rows="4" placeholder='{"type": "object", "properties": {...}}'></textarea>
+                    <p class="setting-description">JSON Schema to validate files against</p>
+                </div>
+            </div>
+        </div>
+        
         <div class="output-area" id="output-area">
             <h2>Comparison Results</h2>
             
@@ -364,6 +485,8 @@
                 <div class="tab" data-tab="missing">Missing Keys</div>
                 <div class="tab" data-tab="differences">Differences</div>
                 <div class="tab" data-tab="common">Common Keys</div>
+                <div class="tab" data-tab="additional">Additional Keys</div>
+                <div class="tab" data-tab="accuracy">Accuracy</div>
                 <div class="tab" data-tab="json">Raw JSON</div>
             </div>
             
@@ -381,6 +504,14 @@
             
             <div class="tab-content" id="tab-common">
                 <div id="results-common"></div>
+            </div>
+            
+            <div class="tab-content" id="tab-additional">
+                <div id="results-additional"></div>
+            </div>
+            
+            <div class="tab-content" id="tab-accuracy">
+                <div id="results-accuracy"></div>
             </div>
             
             <div class="tab-content" id="tab-json">
@@ -525,6 +656,7 @@
                     const missingCount = Object.keys(result.missing).length;
                     const commonCount = Object.keys(result.common).length;
                     const diffCount = Object.keys(result.differences).length;
+                    const additionalCount = Object.keys(result.additional).length;
                     
                     summary.innerHTML = `
                         <div class="summary-item">
@@ -538,6 +670,10 @@
                         <div class="summary-item">
                             <span>Differences:</span>
                             <span class="count-badge diff">${diffCount}</span>
+                        </div>
+                        <div class="summary-item">
+                            <span>Additional Keys:</span>
+                            <span class="count-badge additional">${additionalCount}</span>
                         </div>
                     `;
                     
@@ -590,6 +726,51 @@
                 fileResult.appendChild(table);
                 
                 missingContainer.appendChild(fileResult);
+            });
+            
+            // Additional keys tab
+            const additionalContainer = document.getElementById('results-additional');
+            additionalContainer.innerHTML = '';
+            
+            results.forEach(result => {
+                if (result.error) return;
+                
+                const additionalKeys = Object.keys(result.additional);
+                if (additionalKeys.length === 0) {
+                    additionalContainer.innerHTML += `
+                        <div class="file-result">
+                            <h3>${result.file}</h3>
+                            <p>No additional keys found.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                const table = document.createElement('table');
+                table.className = 'comparison-table';
+                table.innerHTML = `
+                    <thead>
+                        <tr>
+                            <th>Key Path</th>
+                            <th>Target Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${additionalKeys.map(key => `
+                            <tr>
+                                <td>${key}</td>
+                                <td><pre>${JSON.stringify(result.additional[key], null, 2)}</pre></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                `;
+                
+                const fileResult = document.createElement('div');
+                fileResult.className = 'file-result';
+                fileResult.innerHTML = `<h3>${result.file}</h3>`;
+                fileResult.appendChild(table);
+                
+                additionalContainer.appendChild(fileResult);
             });
             
             // Differences tab
@@ -687,6 +868,51 @@
                 commonContainer.appendChild(fileResult);
             });
             
+            // Accuracy tab
+            const accuracyContainer = document.getElementById('results-accuracy');
+            accuracyContainer.innerHTML = '';
+            
+            results.forEach(result => {
+                if (result.error) return;
+                
+                const accuracy = result.accuracy;
+                const fileResult = document.createElement('div');
+                fileResult.className = 'file-result';
+                fileResult.innerHTML = `
+                    <h3>${result.file}</h3>
+                    <div class="accuracy-metrics">
+                        <div class="accuracy-metric">
+                            <h3>Overall Accuracy</h3>
+                            <div class="accuracy-value">${accuracy.overall_accuracy}%</div>
+                            <div class="accuracy-description">Percentage of keys that match exactly in both files</div>
+                            <div class="accuracy-bar">
+                                <div class="accuracy-bar-fill" style="width: ${accuracy.overall_accuracy}%"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="accuracy-metric">
+                            <h3>Key Presence Accuracy</h3>
+                            <div class="accuracy-value">${accuracy.key_presence_accuracy}%</div>
+                            <div class="accuracy-description">Percentage of reference keys that exist in the target file</div>
+                            <div class="accuracy-bar">
+                                <div class="accuracy-bar-fill" style="width: ${accuracy.key_presence_accuracy}%"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="accuracy-metric">
+                            <h3>Value Accuracy</h3>
+                            <div class="accuracy-value">${accuracy.value_accuracy}%</div>
+                            <div class="accuracy-description">Percentage of matching values for keys that exist in both files</div>
+                            <div class="accuracy-bar">
+                                <div class="accuracy-bar-fill" style="width: ${accuracy.value_accuracy}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                accuracyContainer.appendChild(fileResult);
+            });
+            
             // Raw JSON tab
             document.getElementById('results-json').textContent = JSON.stringify(results, null, 2);
         }
@@ -704,6 +930,25 @@
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
+        });
+        
+        // Add validation for JSON fields
+        document.getElementById('customRules').addEventListener('input', function(e) {
+            try {
+                JSON.parse(e.target.value);
+                e.target.style.borderColor = '';
+            } catch (error) {
+                e.target.style.borderColor = 'red';
+            }
+        });
+        
+        document.getElementById('jsonSchema').addEventListener('input', function(e) {
+            try {
+                JSON.parse(e.target.value);
+                e.target.style.borderColor = '';
+            } catch (error) {
+                e.target.style.borderColor = 'red';
+            }
         });
     </script>
 </body>
